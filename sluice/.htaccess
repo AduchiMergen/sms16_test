@@ -1,0 +1,3 @@
+AddHandler python-program .py
+PythonDebug On
+PythonHandler log
