@@ -6,15 +6,21 @@ import _mysql
 import json
 import time
 import os
+import logging
 
 from MySQLdb.constants import FIELD_TYPE
 
 LOG_FILENAME = "../log/clear_files.log"
-LOG_DIR = os.path.dirname(LOG_FILENAME)
 FILE_DIR = "../user_files"
 MYSQL_DB = "sms16_test"
 MYSQL_USER = "user"
 MYSQL_PWD = "password"
+
+
+def prepare_log_file(file_name):
+    if not os.path.exists(os.path.dirname(file_name)):
+        os.mkdir(os.path.dirname(file_name))
+    logging.basicConfig(filename=file_name, filemode="a+", level=logging.INFO, format='%(message)s')
 
 
 def log(operation, user_login="", user_id="", file_name="", comment=""):
@@ -38,10 +44,7 @@ def log(operation, user_login="", user_id="", file_name="", comment=""):
             описание действия. в том числе описание ошибки или уведомления.
             длина не более 255 символов. язык английский
     """
-    global log_file
-    log_file.write("|".join((datetime.now().isoformat(), operation, user_login, str(user_id), str(file_name), comment)))
-    log_file.write("\n")
-    log_file.flush()
+    logging.info("|".join((datetime.now().isoformat(), operation, user_login, str(user_id), str(file_name), comment)))
 
 
 def get_files(db):
@@ -85,7 +88,7 @@ def check_file(file_data):
     return int(file_data[1]) < time.mktime(time_border.timetuple())
 
 
-def prepare_file_list():
+def prepare_file_list(file_dir):
     """
     Подготавливает список файлов в директории для пользовательских файлов.
     Для быстрого поиска полного имени файла по идентификатору.
@@ -94,7 +97,7 @@ def prepare_file_list():
         и полного имени файла в качестве значения
     """
     file_list = {}
-    for root, dirs, files in os.walk(FILE_DIR):
+    for root, dirs, files in os.walk(file_dir):
         for name in files:
             file_list[int(os.path.splitext(name)[0])] = os.path.join(root, name)
     return file_list
@@ -126,16 +129,14 @@ def remove_file(file_tuple, db, file_list):
 
 if __name__ == '__main__':
     # Подготавливаем папку и файл для лога
-    if not os.path.exists(LOG_DIR):
-        os.mkdir(LOG_DIR)
-    log_file = open(LOG_FILENAME, 'a+')
+    prepare_log_file(LOG_FILENAME)
     log(operation="start")
     # Если каталог для файлов пользователя существует подключаемся к базе данных
     if os.path.exists(FILE_DIR):
         try:
             db = _mysql.connect(user=MYSQL_USER, passwd=MYSQL_PWD, db=MYSQL_DB, conv={FIELD_TYPE.LONG: int})
             # Подготавливаем список файлов каталоге для быстрого поиска по идентификатору
-            file_list = prepare_file_list()
+            file_list = prepare_file_list(FILE_DIR)
             # Фильтруем список файлов из дб и обходим его для удаления каждого файла
             for file_tuple in filter(check_file, get_files(db)):
                 remove_file(file_tuple, db, file_list)
@@ -145,7 +146,6 @@ if __name__ == '__main__':
     else:
         log(operation="error", comment="Dir with user files not found")
     log(operation="stop")
-    log_file.close()
 
 
 
