@@ -1,2 +1,4 @@
 log
 user_files/*
+.idea
+*.pyc
