@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # coding: utf-8
+"""
 
+Скрипт для очистки устаревших файлов
+
+"""
 from datetime import datetime, timedelta
 import _mysql
 import json
